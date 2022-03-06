@@ -4,7 +4,7 @@
 [![Python 3.6](https://img.shields.io/badge/python-3.6-blue.svg)](https://www.python.org/downloads/release/python-360/)   
 
 ## [Watch Tutorial for this project]()
-<img src="https://github.com/Spidy20/LandMark_Detection/blob/master/yt_thumb.jpg">
+<img src="https://github.com/Spidy20/Smart_Resume_Analyser_App/blob/master/yt_thumb.jpg">
 
 ## Source
 - Extracting user's information from the Resume, I used [PyResparser](https://omkarpathak.in/pyresparser/)
@@ -40,8 +40,11 @@
 
 ## Screenshots
 
-<img src="https://github.com/Spidy20/LandMark_Detection/blob/master/s1.PNG">
-<img src="https://github.com/Spidy20/LandMark_Detection/blob/master/s2.PNG">
+## User side
+<img src="https://github.com/Spidy20/Smart_Resume_Analyser_App/blob/master/sc1.png">
+
+## Admin Side
+<img src="https://github.com/Spidy20/Smart_Resume_Analyser_App/blob/master/sc2.png">
 
 
 ## Just follow☝️ me and Star⭐ my repository 
