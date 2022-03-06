@@ -11,7 +11,7 @@
 - Extracting Resume PDF into Text, I used [PDFMiner](https://pypi.org/project/pdfminer/).
 
 ## Features
-- User's Section
+- User's & Admin Section
 - Resume Score
 - Career Recommendations
 - Resume writing Tips suggestions
