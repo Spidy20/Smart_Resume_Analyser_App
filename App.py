@@ -20,26 +20,10 @@ import pandas as pd
 import streamlit as st
 import nltk
 import spacy
+# import PyPDF2
+import re
 nltk.download('stopwords')
 spacy.load('en_core_web_sm')
-
-
-# def fetch_yt_video(link):
-#     video = pafy.new(link)
-#     return video.title
-
-
-# def get_table_download_link(df, filename, text):
-#     """Generates a link allowing the data in a given panda dataframe to be downloaded
-#     in:  dataframe
-#     out: href string
-#     """
-#     csv = df.to_csv(index=False)
-#     # some strings <-> bytes conversions necessary here
-#     b64 = base64.b64encode(csv.encode()).decode()
-#     # href = f'<a href="data:file/csv;base64,{b64}">Download Report</a>'
-#     href = f'<a href="data:file/csv;base64,{b64}" download="{filename}">{text}</a>'
-#     return href
 
 
 def pdf_reader(file):
@@ -77,8 +61,56 @@ st.set_page_config(
 )
 
 
+def find_summary(input_text):
+    print("Hello Data:::", input_text)
+
+    email_pattern = r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}'
+
+# Find the email address in the input text using regex
+    email_match = re.search(email_pattern, input_text.lower())
+    if email_match:
+        email_address = email_match.group(0)
+
+        # Find the index of the email address in the input text
+        email_index = input_text.index(email_address)
+
+        # Extract the text after the email address until the start of "WORK EXPERIENCES" section
+        summary_text = input_text[email_index + len(email_address):]
+
+        # Use regex to find the start of "WORK EXPERIENCES" section (all capital letter sentence)
+        work_exp_start = re.search(r'\n[A-Z\s]+\n', summary_text)
+        if work_exp_start:
+            # Extract the text until the start of "WORK EXPERIENCES" section
+            summary_text = summary_text[:work_exp_start.start()].strip()
+
+            return summary_text
+        else:
+            paragraphs = input_text.split('\n\n')
+            # Index 1 corresponds to the first paragraph
+            first_paragraph = paragraphs[1]
+            return first_paragraph
+
+    else:
+        print("No email address found in the input text.")
+
+        return 'InvalidEmail'
+
+
+def find_work_experience(input_text):
+    # Create a regex pattern to match work experience sections
+    exps = []
+
+    if 'EXPERIENCES' in input_text:
+        exps.append('EXPERIENCES')
+    if 'Professional Work Experience' or 'College Experience' or 'Volunteer Experience' in input_text:
+        exps.append('Other Experiences')
+    print(exps)
+
+    return exps
+
+
 def run():
-    st.title("Orbit5 Resume Analyser")
+    st.title("Orbit5 Resume Analyzer")
 
     img = Image.open('./Logo/SRA_Logo.jpg')
     img = img.resize((250, 250))
@@ -86,17 +118,19 @@ def run():
 
     pdf_file = st.file_uploader("Choose your Resume", type=["pdf"])
     if pdf_file is not None:
-        # with st.spinner('Uploading your Resume....'):
-        #     time.sleep(4)
         save_image_path = './Uploaded_Resumes/' + pdf_file.name
+        pdfFileObj = open(save_image_path, 'rb')
+
         with open(save_image_path, "wb") as f:
             f.write(pdf_file.getbuffer())
         show_pdf(save_image_path)
         resume_data = ResumeParser(save_image_path).get_extracted_data()
-        print("resume Data", resume_data)
+        # print("resume Data", resume_data)
         if resume_data:
             # Get the whole resume data
             resume_text = pdf_reader(save_image_path)
+            summary_text = find_summary(resume_text)
+            # work_exp = find_work_experience(resume_text)
 
             st.header("**Resume Analysis**")
             st.success("Hello " + resume_data['name'])
@@ -110,9 +144,22 @@ def run():
             except:
                 pass
             cand_level = ''
+            if find_summary(resume_text) == 'InvalidEmail':
+                st.markdown(
+                    '''<h4 style='text-align: left; color: #d73b5c;'>[-] Pdf file is not ATS Friendly, Cant Read properly</h4>''',
+                    unsafe_allow_html=True)
+            if resume_data['name'] != pdf_file.name:
+                st.markdown(
+                    '''<h4 style='text-align: left; color: #d73b5c;'>[+] Your File name and resume name is not matching</h4>''',
+                    unsafe_allow_html=True)
+            else:
+                st.markdown(
+                    '''<h4 style='text-align: left; color: #1ed760;'>[+] Your File name and resume name is matching</h4>''',
+                    unsafe_allow_html=True)
+
             if resume_data['no_of_pages'] == 1:
-                cand_level = "Fresher"
-                st.markdown('''<h4 style='text-align: left; color: #d73b5c;'>You are looking Fresher.</h4>''',
+                cand_level = "Intermediate"
+                st.markdown('''<h4 style='text-align: left; color: #d73b5c;'>You are looking Intermediate, Add more Experience to improve</h4>''',
                             unsafe_allow_html=True)
             elif resume_data['no_of_pages'] == 2:
                 cand_level = "Intermediate"
@@ -250,40 +297,40 @@ def run():
             timestamp = str(cur_date + '_' + cur_time)
 
             # Resume writing recommendation
-            print("Resume text", resume_text)
+            # print("Resume text", resume_text)
             st.subheader("**Resume Tips & Ideas💡**")
             resume_score = 0
-            if 'Objective' in resume_text:
+            if summary_text != "InvalidEmail" or 'Objective' in resume_text:
                 resume_score = resume_score + 20
                 st.markdown(
-                    '''<h4 style='text-align: left; color: #1ed760;'>[+] Awesome! You have added Objective</h4>''',
+                    '''<h4 style='text-align: left; color: #1ed760;'>[+] Awesome! You have added Professional Summary</h4>''',
                     unsafe_allow_html=True)
             else:
                 st.markdown(
                     '''<h4 style='text-align: left; color: #fabc10;'>[-] According to our recommendation please add your career objective, it will give your career intension to the Recruiters.</h4>''',
                     unsafe_allow_html=True)
 
-            if 'Declaration' in resume_text:
+            if summary_text != "InvalidEmail" and ('Work Experience' or 'Professional Work Experience' or 'College Experience' or 'Volunteer Experience' in resume_text):
                 resume_score = resume_score + 20
                 st.markdown(
-                    '''<h4 style='text-align: left; color: #1ed760;'>[+] Awesome! You have added Delcaration✍/h4>''',
+                    '''<h4 style='text-align: left; color: #1ed760;'>[+] Awesome! You have added Work Experiences/h4>''',
                     unsafe_allow_html=True)
             else:
                 st.markdown(
-                    '''<h4 style='text-align: left; color: #fabc10;'>[-] According to our recommendation please add Declaration✍. It will give the assurance that everything written on your resume is true and fully acknowledged by you</h4>''',
+                    '''<h4 style='text-align: left; color: #fabc10;'>[-] According to our recommendation please add Work Experiences or Check spelling mistakes. It will give the assurance that everything written on your resume is true and fully acknowledged by you</h4>''',
                     unsafe_allow_html=True)
 
-            if 'Hobbies' or 'Interests' in resume_text:
+            if summary_text != "InvalidEmail" and ('Educations' or 'EDUCATIONS' in resume_text):
                 resume_score = resume_score + 20
                 st.markdown(
-                    '''<h4 style='text-align: left; color: #1ed760;'>[+] Awesome! You have added your Hobbies⚽</h4>''',
+                    '''<h4 style='text-align: left; color: #1ed760;'>[+] Awesome! You have added Educations, Add Recent Educations first</h4>''',
                     unsafe_allow_html=True)
             else:
                 st.markdown(
-                    '''<h4 style='text-align: left; color: #fabc10;'>[-] According to our recommendation please add Hobbies⚽. It will show your persnality to the Recruiters and give the assurance that you are fit for this role or not.</h4>''',
+                    '''<h4 style='text-align: left; color: #fabc10;'>[-] According to our recommendation please add Educations. It will show your credibility to the Recruiters and give the assurance that you are fit for this role or not.</h4>''',
                     unsafe_allow_html=True)
 
-            if 'Achievements' in resume_text:
+            if summary_text != "InvalidEmail" and ('Skills' or 'SKILLS' or 'Achievements' in resume_text):
                 resume_score = resume_score + 20
                 st.markdown(
                     '''<h4 style='text-align: left; color: #1ed760;'>[+] Awesome! You have added your Achievements🏅 </h4>''',
@@ -293,10 +340,10 @@ def run():
                     '''<h4 style='text-align: left; color: #fabc10;'>[-] According to our recommendation please add Achievements🏅. It will show that you are capable for the required position.</h4>''',
                     unsafe_allow_html=True)
 
-            if 'Projects' in resume_text:
+            if summary_text != "InvalidEmail" and ('Courses' or 'Relevant Courses' or 'Certificates' or 'Credentials' in resume_text):
                 resume_score = resume_score + 20
                 st.markdown(
-                    '''<h4 style='text-align: left; color: #1ed760;'>[+] Awesome! You have added your Projects👨‍💻 </h4>''',
+                    '''<h4 style='text-align: left; color: #1ed760;'>[+] Awesome! You have added your Certificates or Relevant Course work </h4>''',
                     unsafe_allow_html=True)
             else:
                 st.markdown(
